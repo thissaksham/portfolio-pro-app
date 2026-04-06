@@ -31,6 +31,13 @@ export function useInvestments() {
     const unsubMf = onSnapshot(mfQuery, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MutualFund));
       setRawMfs(data);
+      setMfs(current => {
+        // Merge existing currentNav if available, otherwise use avgNav
+        return data.map(newMf => {
+          const existing = current.find(m => m.id === newMf.id);
+          return { ...newMf, currentNav: existing?.currentNav || newMf.avgNav };
+        });
+      });
     });
 
     const unsubFd = onSnapshot(fdQuery, (snapshot) => {
@@ -48,6 +55,13 @@ export function useInvestments() {
     const unsubStock = onSnapshot(stockQuery, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Stock));
       setRawStocks(data);
+      setStocks(current => {
+        // Merge existing currentPrice if available, otherwise use avgPrice
+        return data.map(newStock => {
+          const existing = current.find(s => s.id === newStock.id);
+          return { ...newStock, currentPrice: existing?.currentPrice || newStock.avgPrice };
+        });
+      });
       setLoading(false);
     });
 
@@ -63,25 +77,33 @@ export function useInvestments() {
     let isMounted = true;
 
     const fetchNavs = async () => {
-      const updatedMfs = await Promise.all(
+      const navUpdates = await Promise.all(
         rawMfs.map(async (mf) => {
           if (mf.schemeCode) {
             try {
               const res = await fetch(`https://api.mfapi.in/mf/${mf.schemeCode}`);
               const json = await res.json();
               if (json.data && json.data.length > 0) {
-                return { ...mf, currentNav: parseFloat(json.data[0].nav) };
+                return { id: mf.id, currentNav: parseFloat(json.data[0].nav) };
               }
             } catch (err) {
               console.error(`Failed to fetch NAV for ${mf.schemeCode}`, err);
             }
           }
-          return mf;
+          return { id: mf.id, currentNav: null };
         })
       );
 
       if (isMounted) {
-        setMfs(updatedMfs);
+        setMfs(current => {
+          return current.map(mf => {
+            const update = navUpdates.find(u => u.id === mf.id);
+            if (update && update.currentNav !== null) {
+              return { ...mf, currentNav: update.currentNav };
+            }
+            return mf;
+          });
+        });
       }
     };
 
@@ -102,7 +124,7 @@ export function useInvestments() {
     const abortController = new AbortController();
 
     const fetchPrices = async () => {
-      const updatedStocks = await Promise.all(
+      const priceUpdates = await Promise.all(
         rawStocks.map(async (stock) => {
           if (stock.symbol) {
             try {
@@ -124,7 +146,7 @@ export function useInvestments() {
               }
               const json = JSON.parse(proxyData.contents);
               if (json.chart?.result?.[0]?.meta?.regularMarketPrice) {
-                return { ...stock, currentPrice: json.chart.result[0].meta.regularMarketPrice };
+                return { id: stock.id, currentPrice: json.chart.result[0].meta.regularMarketPrice };
               }
             } catch (err: any) {
               if (err.name !== 'AbortError') {
@@ -132,12 +154,20 @@ export function useInvestments() {
               }
             }
           }
-          return stock;
+          return { id: stock.id, currentPrice: null };
         })
       );
 
       if (isMounted) {
-        setStocks(updatedStocks);
+        setStocks(current => {
+          return current.map(stock => {
+            const update = priceUpdates.find(u => u.id === stock.id);
+            if (update && update.currentPrice !== null) {
+              return { ...stock, currentPrice: update.currentPrice };
+            }
+            return stock;
+          });
+        });
       }
     };
 
