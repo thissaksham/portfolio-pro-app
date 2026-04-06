@@ -11,20 +11,40 @@ import { StockTopUpModal } from "./components/StockTopUpModal";
 import { AddInvestmentModal } from "./components/AddInvestmentModal";
 import { PortfolioInsights } from "./components/PortfolioInsights";
 import { AssetSummary } from "./components/AssetSummary";
+import { TransactionsModal } from "./components/TransactionsModal";
+import { DeleteConfirmationModal } from "./components/DeleteConfirmationModal";
 import { useInvestments } from "./useInvestments";
-import { MutualFund } from "./types";
+import { MutualFund, Stock, FixedDeposit } from "./types";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus } from "lucide-react";
 
 function Dashboard() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("dashboard");
-  const { mfs, fds, stocks, loading, topUpMF, addMF, addFD, addStock, topUpStock } = useInvestments();
+  const { mfs, fds, stocks, loading, addMF, addFD, addStock, addTransaction, editTransaction, deleteTransaction, deleteAsset } = useInvestments();
   const [selectedMF, setSelectedMF] = useState<MutualFund | null>(null);
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
   const [isTopUpOpen, setIsTopUpOpen] = useState(false);
   const [isStockTopUpOpen, setIsStockTopUpOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [selectedAssetForTx, setSelectedAssetForTx] = useState<MutualFund | Stock | null>(null);
+  const [assetTypeForTx, setAssetTypeForTx] = useState<"MF" | "Stocks" | null>(null);
+  const [isTxModalOpen, setIsTxModalOpen] = useState(false);
+
+  const currentAssetForTx = assetTypeForTx === "MF" 
+    ? mfs.find(m => m.id === selectedAssetForTx?.id) 
+    : stocks.find(s => s.id === selectedAssetForTx?.id);
+
+  // Deletion state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteConfig, setDeleteConfig] = useState<{
+    type: "MF" | "Stocks" | "FD" | "TX";
+    assetId: string;
+    txId?: string;
+    assetType?: "MF" | "Stocks"; // For transactions
+    title: string;
+    message: string;
+  } | null>(null);
 
   if (loading) {
     return (
@@ -58,9 +78,9 @@ function Dashboard() {
     setIsTopUpOpen(true);
   };
 
-  const confirmTopUp = async (units: number, nav: number, date: string) => {
+  const confirmTopUp = async (units: number, nav: number, date: string, type: "BUY" | "SELL") => {
     if (selectedMF) {
-      await topUpMF(selectedMF.id, units, nav, date);
+      await addTransaction("MF", selectedMF.id, units, nav, date, type);
     }
   };
 
@@ -69,9 +89,52 @@ function Dashboard() {
     setIsStockTopUpOpen(true);
   };
 
-  const confirmStockTopUp = async (quantity: number, price: number, date: string) => {
+  const confirmStockTopUp = async (quantity: number, price: number, date: string, type: "BUY" | "SELL") => {
     if (selectedStock) {
-      await topUpStock(selectedStock.id, quantity, price, date);
+      await addTransaction("Stocks", selectedStock.id, quantity, price, date, type);
+    }
+  };
+
+  const handleDeleteAsset = (type: "MF" | "Stocks" | "FD", asset: MutualFund | Stock | FixedDeposit) => {
+    setDeleteConfig({
+      type,
+      assetId: asset.id,
+      title: `Delete ${type === "MF" ? "Mutual Fund" : type === "Stocks" ? "Stock" : "Fixed Deposit"}`,
+      message: `Are you sure you want to delete "${(asset as any).scheme || (asset as any).name || (asset as any).bankName}"? This action cannot be undone.`
+    });
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteTransaction = (assetType: "MF" | "Stocks", assetId: string, transactionId: string) => {
+    setDeleteConfig({
+      type: "TX",
+      assetId,
+      txId: transactionId,
+      assetType,
+      title: "Delete Transaction",
+      message: "Are you sure you want to delete this transaction? This will update your average purchase price and total units."
+    });
+    setIsDeleteModalOpen(true);
+  };
+
+  const executeDelete = async () => {
+    console.log("executeDelete triggered", deleteConfig);
+    if (!deleteConfig) {
+      console.warn("executeDelete called without deleteConfig");
+      return;
+    }
+
+    try {
+      if (deleteConfig.type === "TX") {
+        const type = deleteConfig.assetType || assetTypeForTx;
+        if (!type) throw new Error("Missing asset type for transaction deletion");
+        await deleteTransaction(type, deleteConfig.assetId, deleteConfig.txId!);
+      } else {
+        await deleteAsset(deleteConfig.type, deleteConfig.assetId);
+      }
+    } catch (error) {
+      console.error("Error executing delete:", error);
+      throw error; // Let the modal handle the error state if needed
     }
   };
 
@@ -124,7 +187,16 @@ function Dashboard() {
                 <h2 className="text-2xl font-bold tracking-tight">Mutual Fund Portfolio</h2>
               </div>
               <AssetSummary invested={totalMFInvested} current={totalMFCurrent} gain={totalMFGain} />
-              <MutualFundTable data={mfs} onTopUp={handleTopUp} />
+              <MutualFundTable 
+                data={mfs} 
+                onTopUp={handleTopUp} 
+                onViewTransactions={(mf) => {
+                  setSelectedAssetForTx(mf);
+                  setAssetTypeForTx("MF");
+                  setIsTxModalOpen(true);
+                }}
+                onDelete={(mf) => handleDeleteAsset("MF", mf)}
+              />
             </motion.div>
           )}
 
@@ -139,7 +211,16 @@ function Dashboard() {
                 <h2 className="text-2xl font-bold tracking-tight">Stock Portfolio</h2>
               </div>
               <AssetSummary invested={totalStockInvested} current={totalStockCurrent} gain={totalStockGain} />
-              <StockTable data={stocks} onTopUp={handleStockTopUp} />
+              <StockTable 
+                data={stocks} 
+                onTopUp={handleStockTopUp} 
+                onViewTransactions={(stock) => {
+                  setSelectedAssetForTx(stock);
+                  setAssetTypeForTx("Stocks");
+                  setIsTxModalOpen(true);
+                }}
+                onDelete={(stock) => handleDeleteAsset("Stocks", stock)}
+              />
             </motion.div>
           )}
 
@@ -154,7 +235,7 @@ function Dashboard() {
                 <h2 className="text-2xl font-bold tracking-tight">Fixed Deposits</h2>
               </div>
               <AssetSummary invested={totalFDInvested} current={totalFDMaturity} gain={totalFDGain} />
-              <FixedDepositGrid data={fds} />
+              <FixedDepositGrid data={fds} onDelete={(fd) => handleDeleteAsset("FD", fd)} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -181,6 +262,23 @@ function Dashboard() {
         onAddFD={addFD} 
         onAddStock={addStock}
         defaultType={activeTab === "fd" ? "FD" : activeTab === "stocks" ? "Stocks" : "MF"}
+      />
+
+      <TransactionsModal
+        asset={currentAssetForTx || null}
+        assetType={assetTypeForTx}
+        isOpen={isTxModalOpen}
+        onClose={() => setIsTxModalOpen(false)}
+        onEditTransaction={editTransaction}
+        onDeleteTransaction={handleDeleteTransaction}
+      />
+
+      <DeleteConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={executeDelete}
+        title={deleteConfig?.title || "Confirm Deletion"}
+        message={deleteConfig?.message || "Are you sure you want to delete this item?"}
       />
     </div>
   );

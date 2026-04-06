@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async () => {
     if (!auth) {
-      alert("Firebase is not configured. Please provide a valid API key.");
+      console.error("Firebase is not configured. Please provide a valid API key.");
       return;
     }
 
@@ -46,7 +46,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await signInWithPopup(auth, googleProvider);
     } catch (error: any) {
       console.error("Login failed", error);
-      alert(`Login failed: ${error.message}`);
     }
   };
 

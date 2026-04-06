@@ -2,16 +2,17 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Plus } from "lucide-react";
 import { Stock } from "../types";
-import { formatCurrency } from "../lib/utils";
+import { formatCurrency, cn } from "../lib/utils";
 
 interface StockTopUpModalProps {
   stock: Stock | null;
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (quantity: number, price: number, date: string) => void;
+  onConfirm: (quantity: number, price: number, date: string, type: "BUY" | "SELL") => void | Promise<void>;
 }
 
 export function StockTopUpModal({ stock, isOpen, onClose, onConfirm }: StockTopUpModalProps) {
+  const [type, setType] = useState<"BUY" | "SELL">("BUY");
   const [quantity, setQuantity] = useState("");
   const [price, setPrice] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
@@ -20,7 +21,7 @@ export function StockTopUpModal({ stock, isOpen, onClose, onConfirm }: StockTopU
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onConfirm(parseFloat(quantity), parseFloat(price), new Date(date).toISOString());
+    onConfirm(parseFloat(quantity), parseFloat(price), new Date(date).toISOString(), type);
     setQuantity("");
     setPrice("");
     onClose();
@@ -51,9 +52,33 @@ export function StockTopUpModal({ stock, isOpen, onClose, onConfirm }: StockTopU
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              <div className="flex p-1 bg-zinc-800 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setType("BUY")}
+                  className={cn(
+                    "flex-1 py-2 text-sm font-bold rounded-lg transition-all",
+                    type === "BUY" ? "bg-blue-600 text-white shadow-lg" : "text-zinc-500 hover:text-zinc-300"
+                  )}
+                >
+                  BUY
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setType("SELL")}
+                  className={cn(
+                    "flex-1 py-2 text-sm font-bold rounded-lg transition-all",
+                    type === "SELL" ? "bg-rose-600 text-white shadow-lg" : "text-zinc-500 hover:text-zinc-300"
+                  )}
+                >
+                  SELL
+                </button>
+              </div>
+
               <div>
                 <p className="text-zinc-500 text-xs uppercase tracking-widest font-bold mb-1">Security</p>
                 <p className="text-zinc-100 font-medium">{stock.name}</p>
+                <p className="text-zinc-500 text-xs mt-1">Current Holding: {stock.quantity} shares</p>
               </div>
 
               <div className="space-y-2">
@@ -69,11 +94,12 @@ export function StockTopUpModal({ stock, isOpen, onClose, onConfirm }: StockTopU
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-zinc-400 text-sm">Quantity</label>
+                  <label className="text-zinc-400 text-sm">{type === "BUY" ? "Quantity to Buy" : "Quantity to Sell"}</label>
                   <input
                     type="number"
                     step="1"
                     required
+                    max={type === "SELL" ? stock.quantity : undefined}
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
                     placeholder="0"
@@ -81,7 +107,7 @@ export function StockTopUpModal({ stock, isOpen, onClose, onConfirm }: StockTopU
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-zinc-400 text-sm">Purchase Price</label>
+                  <label className="text-zinc-400 text-sm">{type === "BUY" ? "Purchase Price" : "Sale Price"}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -94,10 +120,13 @@ export function StockTopUpModal({ stock, isOpen, onClose, onConfirm }: StockTopU
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/10">
+              <div className={cn(
+                "p-4 rounded-xl border",
+                type === "BUY" ? "bg-blue-500/5 border-blue-500/10" : "bg-rose-500/5 border-rose-500/10"
+              )}>
                 <div className="flex justify-between text-sm">
-                  <span className="text-zinc-400">Estimated Investment</span>
-                  <span className="text-blue-400 font-bold">
+                  <span className="text-zinc-400">{type === "BUY" ? "Estimated Investment" : "Estimated Proceeds"}</span>
+                  <span className={cn("font-bold", type === "BUY" ? "text-blue-400" : "text-rose-400")}>
                     {quantity && price ? formatCurrency(parseFloat(quantity) * parseFloat(price)) : formatCurrency(0)}
                   </span>
                 </div>
@@ -105,10 +134,13 @@ export function StockTopUpModal({ stock, isOpen, onClose, onConfirm }: StockTopU
 
               <button
                 type="submit"
-                className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2"
+                className={cn(
+                  "w-full py-4 text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2",
+                  type === "BUY" ? "bg-blue-600 hover:bg-blue-500" : "bg-rose-600 hover:bg-rose-500"
+                )}
               >
-                <Plus className="w-5 h-5" />
-                Confirm Transaction
+                {type === "BUY" ? <Plus className="w-5 h-5" /> : <X className="w-5 h-5" />}
+                Confirm {type === "BUY" ? "Top-up" : "Sale"}
               </button>
             </form>
           </motion.div>

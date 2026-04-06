@@ -32,6 +32,9 @@ export function AddInvestmentModal({ isOpen, onClose, onAddMF, onAddFD, onAddSto
   const [schemeCode, setSchemeCode] = useState<string>("");
   const [folio, setFolio] = useState("");
   const [mfType, setMfType] = useState<MutualFund["type"]>("Equity");
+  const [initialUnits, setInitialUnits] = useState("");
+  const [initialNav, setInitialNav] = useState("");
+  const [initialDate, setInitialDate] = useState(new Date().toISOString().split("T")[0]);
 
   // Autocomplete state
   const [suggestions, setSuggestions] = useState<SchemeSuggestion[]>([]);
@@ -50,6 +53,9 @@ export function AddInvestmentModal({ isOpen, onClose, onAddMF, onAddFD, onAddSto
   const [isin, setIsin] = useState("");
   const [stockName, setStockName] = useState("");
   const [stockSymbol, setStockSymbol] = useState("");
+  const [initialQuantity, setInitialQuantity] = useState("");
+  const [initialPrice, setInitialPrice] = useState("");
+  const [initialStockDate, setInitialStockDate] = useState(new Date().toISOString().split("T")[0]);
   const [isSearchingIsin, setIsSearchingIsin] = useState(false);
   const isinTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -221,10 +227,11 @@ export function AddInvestmentModal({ isOpen, onClose, onAddMF, onAddFD, onAddSto
         schemeCode,
         folio,
         type: mfType,
-        units: 0,
-        avgNav: 0,
-        currentNav: 0,
-        lastUpdated: new Date().toISOString(),
+        units: parseFloat(initialUnits) || 0,
+        avgNav: parseFloat(initialNav) || 0,
+        currentNav: parseFloat(initialNav) || 0,
+        lastUpdated: new Date(initialDate).toISOString(),
+        date: new Date(initialDate).toISOString(),
       } as any);
     } else if (type === "FD") {
       onAddFD({
@@ -240,10 +247,11 @@ export function AddInvestmentModal({ isOpen, onClose, onAddMF, onAddFD, onAddSto
         isin,
         name: stockName,
         symbol: stockSymbol,
-        quantity: 0,
-        avgPrice: 0,
-        currentPrice: 0,
-        lastUpdated: new Date().toISOString(),
+        quantity: parseFloat(initialQuantity) || 0,
+        avgPrice: parseFloat(initialPrice) || 0,
+        currentPrice: parseFloat(initialPrice) || 0,
+        lastUpdated: new Date(initialStockDate).toISOString(),
+        date: new Date(initialStockDate).toISOString(),
       } as any);
     }
     onClose();
@@ -382,6 +390,24 @@ export function AddInvestmentModal({ isOpen, onClose, onAddMF, onAddFD, onAddSto
                       </select>
                     </div>
                   </div>
+
+                  <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/10 space-y-4">
+                    <p className="text-blue-400 text-xs font-bold uppercase tracking-wider">Initial Investment (Optional)</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-zinc-400 text-sm">Units</label>
+                        <input type="number" step="0.001" value={initialUnits} onChange={e => setInitialUnits(e.target.value)} className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-zinc-100" placeholder="0.000" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-zinc-400 text-sm">Avg NAV</label>
+                        <input type="number" step="0.01" value={initialNav} onChange={e => setInitialNav(e.target.value)} className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-zinc-100" placeholder="0.00" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-zinc-400 text-sm">Purchase Date</label>
+                      <input type="date" value={initialDate} onChange={e => setInitialDate(e.target.value)} className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-zinc-100" />
+                    </div>
+                  </div>
                 </>
               )}
               
@@ -434,6 +460,24 @@ export function AddInvestmentModal({ isOpen, onClose, onAddMF, onAddFD, onAddSto
                   <div className="space-y-2">
                     <label className="text-zinc-400 text-sm">Security Name (Auto-fetched)</label>
                     <input required value={stockName} onChange={e => setStockName(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-zinc-100" placeholder="e.g. Apple Inc." />
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10 space-y-4">
+                    <p className="text-emerald-400 text-xs font-bold uppercase tracking-wider">Initial Investment (Optional)</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-zinc-400 text-sm">Quantity</label>
+                        <input type="number" value={initialQuantity} onChange={e => setInitialQuantity(e.target.value)} className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-zinc-100" placeholder="0" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-zinc-400 text-sm">Avg Price</label>
+                        <input type="number" step="0.01" value={initialPrice} onChange={e => setInitialPrice(e.target.value)} className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-zinc-100" placeholder="0.00" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-zinc-400 text-sm">Purchase Date</label>
+                      <input type="date" value={initialStockDate} onChange={e => setInitialStockDate(e.target.value)} className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-zinc-100" />
+                    </div>
                   </div>
                 </>
               )}

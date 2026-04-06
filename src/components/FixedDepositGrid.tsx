@@ -1,14 +1,15 @@
 import React from "react";
 import { motion } from "motion/react";
-import { Landmark, Calendar, ArrowUpRight } from "lucide-react";
+import { Landmark, Calendar, ArrowUpRight, Trash2 } from "lucide-react";
 import { FixedDeposit } from "../types";
 import { formatCurrency, cn } from "../lib/utils";
 
 interface FDGridProps {
   data: FixedDeposit[];
+  onDelete: (fd: FixedDeposit) => void;
 }
 
-export function FixedDepositGrid({ data }: FDGridProps) {
+export function FixedDepositGrid({ data, onDelete }: FDGridProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {data.map((fd, index) => {
@@ -41,8 +42,21 @@ export function FixedDepositGrid({ data }: FDGridProps) {
                   <p className="text-zinc-500 text-xs uppercase tracking-widest font-bold">{fd.interestRate}% P.A.</p>
                 </div>
               </div>
-              <div className="text-zinc-500 hover:text-zinc-300 cursor-pointer">
-                <ArrowUpRight className="w-5 h-5" />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(fd);
+                  }}
+                  className="p-2 rounded-lg bg-zinc-800 text-zinc-400 hover:bg-rose-600 hover:text-white transition-all duration-200"
+                  title="Delete FD"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                <div className="text-zinc-500 hover:text-zinc-300 cursor-pointer">
+                  <ArrowUpRight className="w-5 h-5" />
+                </div>
               </div>
             </div>
 

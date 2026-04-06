@@ -87,8 +87,8 @@ export function PortfolioInsights({ mfs, fds, stocks }: Props) {
         {topPerformer ? (
           <div className="flex flex-col h-[calc(100%-2rem)] justify-center items-center">
             <div className="text-zinc-300 font-medium mb-3 line-clamp-2 leading-snug">{topPerformer.scheme}</div>
-            <div className="text-3xl font-bold text-emerald-500">
-              +{formatPercent((topPerformer.currentNav - topPerformer.avgNav) / topPerformer.avgNav * 100)}
+            <div className={topPerformer.currentNav >= topPerformer.avgNav ? "text-3xl font-bold text-emerald-500" : "text-3xl font-bold text-rose-500"}>
+              {topPerformer.currentNav >= topPerformer.avgNav ? "+" : ""}{formatPercent((topPerformer.currentNav - topPerformer.avgNav) / topPerformer.avgNav * 100)}
             </div>
             <div className="text-zinc-500 text-sm mt-2">Absolute return</div>
           </div>

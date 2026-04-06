@@ -1,15 +1,17 @@
 import React from "react";
 import { motion } from "motion/react";
-import { Plus, TrendingUp, TrendingDown, ChevronRight } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, ChevronRight, Eye, Trash2 } from "lucide-react";
 import { MutualFund } from "../types";
 import { formatCurrency, formatPercent, cn } from "../lib/utils";
 
 interface MFTableProps {
   data: MutualFund[];
   onTopUp: (mf: MutualFund) => void;
+  onViewTransactions: (mf: MutualFund) => void;
+  onDelete: (mf: MutualFund) => void;
 }
 
-export function MutualFundTable({ data, onTopUp }: MFTableProps) {
+export function MutualFundTable({ data, onTopUp, onViewTransactions, onDelete }: MFTableProps) {
   return (
     <div className="w-full overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm">
       <table className="w-full text-left border-collapse min-w-[800px]">
@@ -18,7 +20,6 @@ export function MutualFundTable({ data, onTopUp }: MFTableProps) {
             <th className="px-6 py-4 text-xs font-medium text-zinc-500 uppercase tracking-wider">Scheme & AMC</th>
             <th className="px-6 py-4 text-xs font-medium text-zinc-500 uppercase tracking-wider">Type</th>
             <th className="px-6 py-4 text-xs font-medium text-zinc-500 uppercase tracking-wider text-right">Units</th>
-            <th className="px-6 py-4 text-xs font-medium text-zinc-500 uppercase tracking-wider text-right">Avg NAV</th>
             <th className="px-6 py-4 text-xs font-medium text-zinc-500 uppercase tracking-wider text-right">Invested</th>
             <th className="px-6 py-4 text-xs font-medium text-zinc-500 uppercase tracking-wider text-right">Current</th>
             <th className="px-6 py-4 text-xs font-medium text-zinc-500 uppercase tracking-wider text-right">Gain / Loss</th>
@@ -53,8 +54,12 @@ export function MutualFundTable({ data, onTopUp }: MFTableProps) {
                   </span>
                 </td>
                 <td className="px-6 py-5 text-right text-zinc-300 text-sm font-mono">{mf.units.toFixed(3)}</td>
-                <td className="px-6 py-5 text-right text-zinc-300 text-sm font-mono">{mf.avgNav.toFixed(2)}</td>
-                <td className="px-6 py-5 text-right text-zinc-100 text-sm font-mono font-medium">{formatCurrency(invested)}</td>
+                <td className="px-6 py-5 text-right text-zinc-100 text-sm font-mono font-medium">
+                  <div className="flex flex-col items-end">
+                    <span>{formatCurrency(invested)}</span>
+                    <span className="text-[10px] text-zinc-500 mt-1">Avg: {mf.avgNav.toFixed(2)}</span>
+                  </div>
+                </td>
                 <td className="px-6 py-5 text-right text-zinc-100 text-sm font-mono font-medium">
                   <div className="flex flex-col items-end">
                     <span>{formatCurrency(current)}</span>
@@ -74,12 +79,41 @@ export function MutualFundTable({ data, onTopUp }: MFTableProps) {
                   </div>
                 </td>
                 <td className="px-6 py-5 text-center">
-                  <button
-                    onClick={() => onTopUp(mf)}
-                    className="p-2 rounded-lg bg-zinc-800 text-zinc-400 hover:bg-blue-600 hover:text-white transition-all duration-200"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onViewTransactions(mf);
+                      }}
+                      className="p-2 rounded-lg bg-zinc-800 text-zinc-400 hover:bg-zinc-600 hover:text-white transition-all duration-200"
+                      title="View Transactions"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTopUp(mf);
+                      }}
+                      className="p-2 rounded-lg bg-zinc-800 text-zinc-400 hover:bg-blue-600 hover:text-white transition-all duration-200"
+                      title="Top-up Investment"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(mf);
+                      }}
+                      className="p-2 rounded-lg bg-zinc-800 text-zinc-400 hover:bg-rose-600 hover:text-white transition-all duration-200"
+                      title="Delete Investment"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </td>
               </motion.tr>
             );

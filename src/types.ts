@@ -1,3 +1,11 @@
+export interface Transaction {
+  id: string;
+  date: string;
+  units: number;
+  price: number;
+  type: "BUY" | "SELL";
+}
+
 export interface MutualFund {
   id: string;
   uid: string;
@@ -11,6 +19,7 @@ export interface MutualFund {
   currentNav: number;
   lastUpdated: string;
   date?: string; // Original purchase date
+  transactions?: Transaction[];
 }
 
 export interface FixedDeposit {
@@ -37,6 +46,7 @@ export interface Stock {
   currentPrice: number;
   lastUpdated: string;
   date?: string;
+  transactions?: Transaction[];
 }
 
 export interface UserProfile {
