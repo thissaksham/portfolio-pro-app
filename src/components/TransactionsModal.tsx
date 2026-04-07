@@ -23,7 +23,9 @@ export function TransactionsModal({ asset, assetType, isOpen, onClose, onEditTra
 
   if (!asset || !assetType) return null;
 
-  const transactions = asset.transactions || [];
+  const transactions = [...(asset.transactions || [])].sort((a, b) => 
+    new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
   const title = assetType === "MF" ? (asset as MutualFund).scheme : (asset as Stock).name;
   const unitLabel = assetType === "MF" ? "Units" : "Quantity";
   const priceLabel = assetType === "MF" ? "NAV" : "Price";
