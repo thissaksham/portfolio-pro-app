@@ -29,6 +29,7 @@ async function startServer() {
 
   // Health check
   app.get("/api/health", (req, res) => {
+    console.log("Health check requested");
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
