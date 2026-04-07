@@ -34,6 +34,7 @@ export function VerifyIntegrityModal({ isOpen, onClose, mfs, stocks }: VerifyInt
   const [password, setPassword] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [results, setResults] = useState<VerificationResult[] | null>(null);
+  const [statementDate, setStatementDate] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -41,6 +42,7 @@ export function VerifyIntegrityModal({ isOpen, onClose, mfs, stocks }: VerifyInt
     setFile(null);
     setPassword("");
     setResults(null);
+    setStatementDate(null);
     setError(null);
     setIsVerifying(false);
   };
@@ -124,6 +126,36 @@ export function VerifyIntegrityModal({ isOpen, onClose, mfs, stocks }: VerifyInt
     return Object.entries(uniqueData).map(([name, units]) => ({ name, units }));
   };
 
+  const calculateUnitsAsOf = (transactions: any[] | undefined, date: string) => {
+    if (!transactions || transactions.length === 0) return null;
+    const cutoff = new Date(date);
+    cutoff.setHours(23, 59, 59, 999); // Include the entire day of the 'to' date
+    
+    return transactions
+      .filter(t => new Date(t.date) <= cutoff)
+      .reduce((acc, t) => {
+        const units = typeof t.units === 'string' ? parseFloat(t.units) : t.units;
+        if (t.type === "BUY") return acc + units;
+        if (t.type === "SELL") return acc - units;
+        return acc;
+      }, 0);
+  };
+
+  const formatDate = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
+  const normalizeFolio = (folio: string | undefined) => {
+    if (!folio) return "";
+    // Remove all whitespace and take only the part before the first slash
+    return folio.trim().replace(/\s+/g, "").split("/")[0].toLowerCase();
+  };
+
   const handleVerify = async () => {
     if (!file) return;
     setIsVerifying(true);
@@ -146,6 +178,7 @@ export function VerifyIntegrityModal({ isOpen, onClose, mfs, stocks }: VerifyInt
 
       const contentType = response.headers.get("content-type");
       let pdfData: { name: string; units: number; folio?: string; isin?: string }[] = [];
+      let statementToDate: string | null = null;
 
       if (!response.ok) {
         console.warn("API verification failed, attempting local parsing fallback...");
@@ -191,6 +224,8 @@ export function VerifyIntegrityModal({ isOpen, onClose, mfs, stocks }: VerifyInt
 
         const result = await response.json();
         pdfData = result.data || [];
+        statementToDate = result.statementDate || null;
+        setStatementDate(statementToDate);
         
         if (pdfData.length === 0) {
           // Fallback to local parsing if API returns no data but didn't error
@@ -213,8 +248,8 @@ export function VerifyIntegrityModal({ isOpen, onClose, mfs, stocks }: VerifyInt
       mfs.forEach(mf => {
         // Try to find a match in PDF data using folio and isin
         const match = pdfData.find(p => {
-          const mfFolio = mf.folio?.trim().toLowerCase();
-          const pFolio = p.folio?.trim().toLowerCase();
+          const mfFolio = normalizeFolio(mf.folio);
+          const pFolio = normalizeFolio(p.folio);
           const mfIsin = mf.isin?.trim().toUpperCase();
           const pIsin = p.isin?.trim().toUpperCase();
 
@@ -227,6 +262,10 @@ export function VerifyIntegrityModal({ isOpen, onClose, mfs, stocks }: VerifyInt
           return false;
         });
 
+        const portfolioUnits = statementToDate 
+          ? (calculateUnitsAsOf(mf.transactions, statementToDate) ?? mf.units)
+          : mf.units;
+
         verificationResults.push({
           name: mf.scheme,
           type: "MF",
@@ -234,8 +273,8 @@ export function VerifyIntegrityModal({ isOpen, onClose, mfs, stocks }: VerifyInt
           schemeCode: mf.schemeCode,
           folio: mf.folio,
           pdfUnits: match ? match.units : 0,
-          portfolioUnits: mf.units,
-          match: match ? Math.abs(match.units - mf.units) < 0.01 : false
+          portfolioUnits: portfolioUnits,
+          match: match ? Math.abs(match.units - portfolioUnits) < 0.01 : false
         });
       });
 
@@ -260,13 +299,17 @@ export function VerifyIntegrityModal({ isOpen, onClose, mfs, stocks }: VerifyInt
           return false;
         });
 
+        const portfolioUnits = statementToDate 
+          ? (calculateUnitsAsOf(stock.transactions, statementToDate) ?? stock.quantity)
+          : stock.quantity;
+
         verificationResults.push({
           name: stock.name,
           type: "Stock",
           isin: stock.isin,
           pdfUnits: match ? match.units : 0,
-          portfolioUnits: stock.quantity,
-          match: match ? Math.abs(match.units - stock.quantity) < 0.01 : false
+          portfolioUnits: portfolioUnits,
+          match: match ? Math.abs(match.units - portfolioUnits) < 0.01 : false
         });
       });
 
@@ -387,6 +430,18 @@ export function VerifyIntegrityModal({ isOpen, onClose, mfs, stocks }: VerifyInt
                 </div>
               ) : (
                 <div className="space-y-8">
+                  <div className="flex flex-col gap-1">
+                    <h4 className="text-zinc-100 font-semibold flex items-center gap-2">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                      Verification Results
+                    </h4>
+                    {statementDate && (
+                      <p className="text-zinc-500 text-sm">
+                        Calculated based on your portfolio as of <span className="text-zinc-300 font-medium">{formatDate(statementDate)}</span>
+                      </p>
+                    )}
+                  </div>
+
                   {/* Mutual Funds Section */}
                   <div className="space-y-4">
                     <h4 className="text-blue-400 text-xs font-bold uppercase tracking-wider flex items-center gap-2">

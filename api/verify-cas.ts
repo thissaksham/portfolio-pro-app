@@ -24,12 +24,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
-    const userApiKey = req.headers["x-casparser-api-key"] as string;
-    const systemApiKey = process.env.CASPARSER_API_KEY;
-    const apiKey = userApiKey || systemApiKey;
+    const apiKey = req.headers["x-casparser-api-key"] as string;
 
     if (!apiKey) {
-      return res.status(500).json({ error: "CASPARSER_API_KEY is not configured and no user key provided" });
+      return res.status(400).json({ error: "CASParser API Key is required. Please provide your personal key in Settings." });
     }
 
     // Prepare form data for casparser.in API
@@ -76,6 +74,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         error: result.msg || "CASParser failed to parse the PDF. Ensure the password is correct and the file is a valid CAS statement." 
       });
     }
+
+    // Extract statement date (TO date)
+    const statementDate = result.meta?.statement_period?.to || result.meta?.generated_at;
 
     // Transform v4 smart parse response to our expected format
     const parsedData: { name: string, units: number, folio?: string, isin?: string }[] = [];
@@ -132,7 +133,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       parsedData.push(...legacyData);
     }
 
-    res.status(200).json({ data: parsedData });
+    res.status(200).json({ data: parsedData, statementDate });
   } catch (error) {
     console.error("Verification Error:", error);
     res.status(500).json({ error: "Internal server error during verification" });

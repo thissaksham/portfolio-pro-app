@@ -12,7 +12,7 @@ By securely parsing your CAS PDF (generated from NSDL/CDSL or CAMS/KFintech), In
 
 ## Key Features
 - **🛡️ Portfolio Integrity Verification:** Securely upload your CAS PDF to verify your Mutual Fund and Stock holdings. The app uses the **CASParser API** to extract official data and compare it with your dashboard.
-- **🔑 Bring Your Own Key (BYOK):** Users can provide their own CASParser API key in the settings. This allows you to bypass shared platform limits and use your own credits for statement parsing.
+- **🔑 Bring Your Own Key (BYOK):** To use the CAS verification feature, you must provide your own **CASParser API key** in the settings. This ensures your data remains private and you aren't limited by shared platform quotas.
 - **📊 Unified Dashboard:** A clean, high-performance interface to track Mutual Funds, Stocks, and Fixed Deposits in one place.
 - **📈 Real-time Data:** 
   - **Mutual Funds:** Latest NAVs fetched directly via MFAPI.
@@ -32,14 +32,13 @@ By securely parsing your CAS PDF (generated from NSDL/CDSL or CAMS/KFintech), In
   - **Yahoo Finance:** For real-time stock market data.
 
 ## Environment Variables
-To run this project, you will need to add the following environment variable:
-- `CASPARSER_API_KEY`: The default API key used for the CAS verification feature. **Note:** Users can override this by providing their own key in the app settings (BYOK).
+This project does not require any server-side environment variables for core functionality, as it uses a **BYOK (Bring Your Own Key)** model for third-party API integrations.
 
 ## Bring Your Own Key (BYOK)
-InvestCheck supports a "Bring Your Own Key" model for CAS statement parsing. 
-- **Privacy:** Your personal API key is stored securely in your private Firestore document, never shared with other users.
-- **Limits:** Using your own key ensures you aren't affected by the shared platform's daily parsing limits.
-- **Setup:** Simply click your profile photo, open **Settings**, and paste your key from [CASParser](https://app.casparser.in/).
+InvestCheck operates on a strict "Bring Your Own Key" model for CAS statement parsing. There is no default or shared API key provided by the platform.
+- **Requirement:** You **must** provide your own personal API key from [CASParser](https://app.casparser.in/) to verify your portfolio statements.
+- **Privacy:** Your personal API key is stored securely in your private Firestore document and is only used for your own requests.
+- **Setup:** Click your profile photo, open **Settings**, and paste your key.
 
 ## Firebase Configuration
 This project uses **Firebase** for:

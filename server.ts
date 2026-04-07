@@ -128,6 +128,9 @@ async function startServer() {
         });
       }
 
+      // Extract statement date (TO date)
+      const statementDate = result.meta?.statement_period?.to || result.meta?.generated_at;
+
       // Transform v4 smart parse response to our expected format
       // Expected format: { data: { name: string, units: number, folio?: string, isin?: string }[] }
       const parsedData: { name: string, units: number, folio?: string, isin?: string }[] = [];
@@ -186,7 +189,7 @@ async function startServer() {
         parsedData.push(...legacyData);
       }
 
-      res.json({ data: parsedData });
+      res.json({ data: parsedData, statementDate });
     } catch (error) {
       console.error("Verification Error:", error);
       res.status(500).json({ error: "Internal server error during verification" });

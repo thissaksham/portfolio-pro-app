@@ -57,8 +57,10 @@ export function AddInvestmentModal({ isOpen, onClose, onAddMF, onAddFD, onAddSto
   const [initialQuantity, setInitialQuantity] = useState("");
   const [initialPrice, setInitialPrice] = useState("");
   const [initialStockDate, setInitialStockDate] = useState(new Date().toISOString().split("T")[0]);
-  const [isSearchingIsin, setIsSearchingIsin] = useState(false);
-  const isinTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isSearchingStock, setIsSearchingStock] = useState(false);
+  const [stockSuggestions, setStockSuggestions] = useState<any[]>([]);
+  const [showStockSuggestions, setShowStockSuggestions] = useState(false);
+  const stockTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -71,7 +73,9 @@ export function AddInvestmentModal({ isOpen, onClose, onAddMF, onAddFD, onAddSto
       setIsin("");
       setStockName("");
       setStockSymbol("");
-      setIsSearchingIsin(false);
+      setIsSearchingStock(false);
+      setStockSuggestions([]);
+      setShowStockSuggestions(false);
       setIsSearching(false);
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -175,7 +179,7 @@ export function AddInvestmentModal({ isOpen, onClose, onAddMF, onAddFD, onAddSto
         }
       }
 
-      // 2. Fallback to Yahoo Finance search via server proxy
+      // 2. Fallback to Yahoo Finance search via server proxy to get the name
       const yahooUrl = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(isin)}`;
       const yahooRes = await fetch(`/api/proxy?url=${encodeURIComponent(yahooUrl)}`);
       
@@ -183,8 +187,27 @@ export function AddInvestmentModal({ isOpen, onClose, onAddMF, onAddFD, onAddSto
         const data = await yahooRes.json();
         if (data.quotes && data.quotes.length > 0) {
           const quote = data.quotes[0];
-          setScheme(quote.longname || quote.shortname || quote.name || "");
+          const name = quote.longname || quote.shortname || quote.name || "";
+          setScheme(name);
           setAmc(quote.dispName || quote.exchDisp || quote.sector || "");
+
+          // 3. Use the name from Yahoo to search MFAPI for the scheme code
+          if (name) {
+            const nameSearchUrl = `https://api.mfapi.in/mf/search?q=${encodeURIComponent(name)}`;
+            const nameSearchRes = await fetch(`/api/proxy?url=${encodeURIComponent(nameSearchUrl)}`);
+            if (nameSearchRes.ok) {
+              const nameSearchData = await nameSearchRes.json();
+              if (nameSearchData && Array.isArray(nameSearchData) && nameSearchData.length > 0) {
+                // Try to find a good match
+                const bestMatch = nameSearchData.find((s: any) => 
+                  s.schemeName.toLowerCase().includes(name.toLowerCase()) ||
+                  name.toLowerCase().includes(s.schemeName.toLowerCase())
+                ) || nameSearchData[0];
+                
+                setSchemeCode(bestMatch.schemeCode.toString());
+              }
+            }
+          }
         }
       }
     } catch (error) {
@@ -217,9 +240,10 @@ export function AddInvestmentModal({ isOpen, onClose, onAddMF, onAddFD, onAddSto
     searchByAmfiCode(suggestion.schemeCode.toString());
   };
 
-  const searchIsin = async (query: string) => {
-    if (!query || query.length < 5) {
-      setIsSearchingIsin(false);
+  const searchStocks = async (query: string) => {
+    if (!query || query.length < 3) {
+      setStockSuggestions([]);
+      setShowStockSuggestions(false);
       return;
     }
     
@@ -228,7 +252,7 @@ export function AddInvestmentModal({ isOpen, onClose, onAddMF, onAddFD, onAddSto
     }
     abortControllerRef.current = new AbortController();
     
-    setIsSearchingIsin(true);
+    setIsSearchingStock(true);
     try {
       const targetUrl = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}`;
       
@@ -239,31 +263,40 @@ export function AddInvestmentModal({ isOpen, onClose, onAddMF, onAddFD, onAddSto
       if (response.ok) {
         const data = await response.json();
         if (data.quotes && data.quotes.length > 0) {
-          const quote = data.quotes[0];
-          setStockName(quote.longname || quote.shortname || quote.name || "");
-          setStockSymbol(quote.symbol || "");
+          setStockSuggestions(data.quotes.slice(0, 10));
+          setShowStockSuggestions(true);
         }
       }
     } catch (error: any) {
       if (error.name !== 'AbortError') {
-        console.error("Failed to fetch Stock ISIN details", error);
+        console.error("Failed to fetch Stock details", error);
       }
     } finally {
-      setIsSearchingIsin(false);
+      setIsSearchingStock(false);
     }
   };
 
-  const handleIsinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.toUpperCase();
-    setIsin(value);
+  const handleStockSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setIsin(value); // We use 'isin' state for the search input
     
-    if (isinTimeoutRef.current) {
-      clearTimeout(isinTimeoutRef.current);
+    if (stockTimeoutRef.current) {
+      clearTimeout(stockTimeoutRef.current);
     }
 
-    isinTimeoutRef.current = setTimeout(() => {
-      searchIsin(value);
-    }, 800);
+    stockTimeoutRef.current = setTimeout(() => {
+      searchStocks(value);
+    }, 500);
+  };
+
+  const selectStock = (quote: any) => {
+    setStockName(quote.longname || quote.shortname || quote.name || "");
+    setStockSymbol(quote.symbol || "");
+    // If it looks like an ISIN, set it, otherwise leave it for manual entry
+    if (isin.length >= 10 && /^[A-Z]{2}[A-Z0-9]{9,10}\d$/.test(isin)) {
+      setIsin(isin);
+    }
+    setShowStockSuggestions(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -510,24 +543,76 @@ export function AddInvestmentModal({ isOpen, onClose, onAddMF, onAddFD, onAddSto
 
               {type === "Stocks" && (
                 <>
-                  <div className="space-y-2">
-                    <label className="text-zinc-400 text-sm">ISIN</label>
+                  <div className="space-y-2 relative">
+                    <label className="text-zinc-400 text-sm">Search Stock (Name, Symbol or ISIN)</label>
                     <div className="relative">
                       <input 
                         required 
                         value={isin} 
-                        onChange={handleIsinChange} 
-                        className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-zinc-100 pl-10 uppercase" 
-                        placeholder="e.g. US0378331005" 
+                        onChange={handleStockSearchChange} 
+                        onFocus={() => {
+                          if (stockSuggestions.length > 0) setShowStockSuggestions(true);
+                        }}
+                        onBlur={() => {
+                          setTimeout(() => setShowStockSuggestions(false), 200);
+                        }}
+                        className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-zinc-100 pl-10" 
+                        placeholder="e.g. Reliance, AAPL, INE002A01018" 
                       />
                       <div className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
-                        {isSearchingIsin ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                        {isSearchingStock ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                       </div>
                     </div>
+
+                    {/* Stock Autocomplete Dropdown */}
+                    <AnimatePresence>
+                      {showStockSuggestions && stockSuggestions.length > 0 && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="absolute z-50 w-full mt-1 bg-zinc-800 border border-zinc-700 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto"
+                        >
+                          {stockSuggestions.map((s, idx) => (
+                            <div 
+                              key={idx}
+                              onClick={() => selectStock(s)}
+                              className="px-4 py-3 hover:bg-zinc-700 cursor-pointer text-sm text-zinc-200 border-b border-zinc-700/50 last:border-0"
+                            >
+                              <div className="flex justify-between items-center">
+                                <span className="font-medium truncate mr-2">{s.longname || s.shortname || s.name}</span>
+                                <span className="text-xs text-zinc-500 shrink-0 font-mono">{s.symbol}</span>
+                              </div>
+                              <div className="text-[10px] text-zinc-500 mt-0.5">
+                                {s.exchDisp} • {s.typeDisp}
+                              </div>
+                            </div>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-zinc-400 text-sm">Security Name</label>
+                      <input required value={stockName} onChange={e => setStockName(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-zinc-100" placeholder="e.g. Apple Inc." />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-zinc-400 text-sm">Symbol (For Live Price)</label>
+                      <input required value={stockSymbol} onChange={e => setStockSymbol(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-zinc-100 font-mono" placeholder="e.g. AAPL or RELIANCE.NS" />
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
-                    <label className="text-zinc-400 text-sm">Security Name (Auto-fetched)</label>
-                    <input required value={stockName} onChange={e => setStockName(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-zinc-100" placeholder="e.g. Apple Inc." />
+                    <label className="text-zinc-400 text-sm">ISIN (For Verification)</label>
+                    <input 
+                      required 
+                      value={isin.length > 15 ? "" : isin} // Simple heuristic to clear if it was a name search
+                      onChange={e => setIsin(e.target.value.toUpperCase())} 
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-zinc-100 uppercase font-mono" 
+                      placeholder="e.g. INE002A01018" 
+                    />
                   </div>
 
                   <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10 space-y-4">
