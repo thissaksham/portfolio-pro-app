@@ -24,9 +24,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
-    const apiKey = process.env.CASPARSER_API_KEY;
+    const userApiKey = req.headers["x-casparser-api-key"] as string;
+    const systemApiKey = process.env.CASPARSER_API_KEY;
+    const apiKey = userApiKey || systemApiKey;
+
     if (!apiKey) {
-      return res.status(500).json({ error: "CASPARSER_API_KEY is not configured" });
+      return res.status(500).json({ error: "CASPARSER_API_KEY is not configured and no user key provided" });
     }
 
     // Prepare form data for casparser.in API

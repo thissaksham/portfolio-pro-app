@@ -1,15 +1,16 @@
 import React from "react";
 import { motion } from "motion/react";
-import { LayoutDashboard, Landmark, TrendingUp, LogOut, User as UserIcon, LineChart, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Landmark, TrendingUp, LogOut, User as UserIcon, LineChart, ShieldCheck, Settings } from "lucide-react";
 import { useAuth } from "../AuthContext";
 import { cn } from "../lib/utils";
 
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  onOpenSettings: () => void;
 }
 
-export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
+export function Sidebar({ activeTab, setActiveTab, onOpenSettings }: SidebarProps) {
   const { logout, user } = useAuth();
 
   const menuItems = [
@@ -58,7 +59,10 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
           </span>
         </button>
         
-        <div className="w-10 h-10 rounded-full overflow-hidden border border-zinc-800">
+        <button 
+          onClick={onOpenSettings}
+          className="w-10 h-10 rounded-full overflow-hidden border border-zinc-800 hover:border-blue-500 transition-all group relative"
+        >
           {user?.photoURL ? (
             <img src={user.photoURL} alt="User" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           ) : (
@@ -66,7 +70,13 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
               <UserIcon className="w-5 h-5 text-zinc-500" />
             </div>
           )}
-        </div>
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+            <Settings className="w-4 h-4 text-white" />
+          </div>
+          <span className="absolute left-full ml-4 px-2 py-1 bg-zinc-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+            Settings
+          </span>
+        </button>
       </div>
     </aside>
   );

@@ -12,6 +12,7 @@ By securely parsing your CAS PDF (generated from NSDL/CDSL or CAMS/KFintech), In
 
 ## Key Features
 - **🛡️ Portfolio Integrity Verification:** Securely upload your CAS PDF to verify your Mutual Fund and Stock holdings. The app uses the **CASParser API** to extract official data and compare it with your dashboard.
+- **🔑 Bring Your Own Key (BYOK):** Users can provide their own CASParser API key in the settings. This allows you to bypass shared platform limits and use your own credits for statement parsing.
 - **📊 Unified Dashboard:** A clean, high-performance interface to track Mutual Funds, Stocks, and Fixed Deposits in one place.
 - **📈 Real-time Data:** 
   - **Mutual Funds:** Latest NAVs fetched directly via MFAPI.
@@ -32,7 +33,13 @@ By securely parsing your CAS PDF (generated from NSDL/CDSL or CAMS/KFintech), In
 
 ## Environment Variables
 To run this project, you will need to add the following environment variable:
-- `CASPARSER_API_KEY`: Required for the CAS verification feature (v4 smart parse).
+- `CASPARSER_API_KEY`: The default API key used for the CAS verification feature. **Note:** Users can override this by providing their own key in the app settings (BYOK).
+
+## Bring Your Own Key (BYOK)
+InvestCheck supports a "Bring Your Own Key" model for CAS statement parsing. 
+- **Privacy:** Your personal API key is stored securely in your private Firestore document, never shared with other users.
+- **Limits:** Using your own key ensures you aren't affected by the shared platform's daily parsing limits.
+- **Setup:** Simply click your profile photo, open **Settings**, and paste your key from [CASParser](https://app.casparser.in/).
 
 ## Firebase Configuration
 This project uses **Firebase** for:

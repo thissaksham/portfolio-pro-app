@@ -31,6 +31,15 @@
         "uid": { "type": "string", "description": "Owner's User ID" }
       },
       "required": ["bankName", "principal", "interestRate", "startDate", "maturityDate", "uid"]
+    },
+    "UserSettings": {
+      "title": "User Settings",
+      "description": "Private settings and API keys for a user.",
+      "type": "object",
+      "properties": {
+        "casparserApiKey": { "type": "string", "description": "User's own CASParser API key" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "firestore": {
@@ -41,6 +50,10 @@
     "/fixed_deposits/{fdId}": {
       "schema": "FixedDeposit",
       "description": "User's fixed deposit investments"
+    },
+    "/user_settings/{userId}": {
+      "schema": "UserSettings",
+      "description": "User's private settings and API keys"
     }
   }
 }

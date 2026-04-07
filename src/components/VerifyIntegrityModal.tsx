@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { X, Upload, ShieldCheck, AlertCircle, CheckCircle2, Loader2, FileText, Lock, TrendingUp, LineChart, XCircle } from "lucide-react";
 import { MutualFund, Stock } from "../types";
 import { cn } from "../lib/utils";
+import { useSettings } from "../SettingsContext";
 import * as pdfjsLib from "pdfjs-dist";
 
 // Set up PDF.js worker
@@ -28,6 +29,7 @@ interface VerificationResult {
 }
 
 export function VerifyIntegrityModal({ isOpen, onClose, mfs, stocks }: VerifyIntegrityModalProps) {
+  const { settings } = useSettings();
   const [file, setFile] = useState<File | null>(null);
   const [password, setPassword] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
@@ -136,6 +138,9 @@ export function VerifyIntegrityModal({ isOpen, onClose, mfs, stocks }: VerifyInt
 
       const response = await fetch("/api/verify-cas", {
         method: "POST",
+        headers: {
+          "x-casparser-api-key": settings.casparserApiKey || "",
+        },
         body: formData,
       });
 

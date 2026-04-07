@@ -55,5 +55,9 @@ service cloud.firestore {
       allow update: if isAuthenticated() && isOwner(resource.data.uid) && isValidStock(request.resource.data);
       allow delete: if isAuthenticated() && isOwner(resource.data.uid);
     }
+
+    match /user_settings/{userId} {
+      allow read, write: if isOwner(userId);
+    }
   }
 }

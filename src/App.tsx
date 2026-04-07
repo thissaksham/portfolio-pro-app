@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { AuthProvider, useAuth } from "./AuthContext";
+import { SettingsProvider } from "./SettingsContext";
 import { AuthScreen } from "./components/AuthScreen";
 import { Sidebar, Header } from "./components/Layout";
 import { DashboardSummary } from "./components/DashboardSummary";
@@ -13,11 +14,12 @@ import { PortfolioInsights } from "./components/PortfolioInsights";
 import { AssetSummary } from "./components/AssetSummary";
 import { TransactionsModal } from "./components/TransactionsModal";
 import { VerifyIntegrityModal } from "./components/VerifyIntegrityModal";
+import { SettingsModal } from "./components/SettingsModal";
 import { DeleteConfirmationModal } from "./components/DeleteConfirmationModal";
 import { useInvestments } from "./useInvestments";
 import { MutualFund, Stock, FixedDeposit } from "./types";
 import { motion, AnimatePresence } from "motion/react";
-import { ShieldCheck, Plus } from "lucide-react";
+import { ShieldCheck, Plus, Settings } from "lucide-react";
 
 function Dashboard() {
   const { user } = useAuth();
@@ -28,6 +30,7 @@ function Dashboard() {
   const [isTopUpOpen, setIsTopUpOpen] = useState(false);
   const [isStockTopUpOpen, setIsStockTopUpOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedAssetForTx, setSelectedAssetForTx] = useState<MutualFund | Stock | null>(null);
   const [assetTypeForTx, setAssetTypeForTx] = useState<"MF" | "Stocks" | null>(null);
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
@@ -149,7 +152,11 @@ function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#09090b] text-zinc-100 flex">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        onOpenSettings={() => setIsSettingsOpen(true)} 
+      />
       
       <main className="flex-1 ml-20 p-8 lg:p-12 w-full">
         <div className="flex justify-between items-start mb-10">
@@ -299,6 +306,11 @@ function Dashboard() {
         stocks={stocks}
       />
 
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+      />
+
       <DeleteConfirmationModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
@@ -321,7 +333,9 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <SettingsProvider>
+        <AppContent />
+      </SettingsProvider>
     </AuthProvider>
   );
 }
